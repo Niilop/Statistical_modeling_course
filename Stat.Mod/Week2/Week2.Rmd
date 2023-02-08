@@ -1,0 +1,162 @@
+---
+title: "Week2"
+output: html_document
+date: "2023-01-23"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+### 1.a)
+
+```{r}
+data<-read.table("ratstime.txt", sep="\t", dec=".", header=TRUE)
+attach(data)
+data
+```
+```{r}
+mod = lm(time~poison+treat)
+summary(mod)
+```
+```{r}
+
+newdata<-expand.grid(poison=1:3,treat=c(1,2,3,4))
+Xc<-model.matrix(~factor(poison)+factor(treat), data=newdata)
+Xc
+
+betahat <- coef(mod)
+
+meanA = Xc[1,]+Xc[2,]+Xc[3,]/3
+meanB = Xc[4,]+Xc[5,]+Xc[6,]/3
+meanC = Xc[7,]+Xc[8,]+Xc[9,]/3
+meanD = Xc[10,]+Xc[11,]+Xc[12,]/3
+
+meanA%*%betahat
+meanB%*%betahat
+meanC%*%betahat
+meanD%*%betahat
+
+```
+
+```{r}
+kt<-meanA-meanB
+kt%*%betahat
+K<-cbind(kt)
+```
+
+```{r}
+q<-1
+Wald<-(t(t(K)%*%betahat)%*%solve(t(K)%*%vcov(mod)%*%K)%*%t(K)%*%betahat)/q
+Wald
+
+p.value<-pf(Wald, 1, 42, lower.tail = FALSE)
+p.value
+
+5.614^2
+```
+### 1.b)
+
+```{r}
+pred<-kt%*%betahat
+sigma2<-sigma(mod)^2
+
+# predictive hypothesis testing
+
+T<-pred/sqrt(sigma2*(2+(kt)%*%solve(vcov(mod))%*%(kt)))
+
+d.value<-2*pt(abs(T),df=42, lower.tail = FALSE)
+d.value
+```
+
+```{r}
+plot(factor(poison), time, type="n")
+lines(factor(poison)[treat=="A"],fitted(mod)[treat=="A"], col="red")
+lines(factor(poison)[treat=="B"],fitted(mod)[treat=="B"], col="blue")
+lines(factor(poison)[treat=="C"],fitted(mod)[treat=="C"], col="green")
+lines(factor(poison)[treat=="D"],fitted(mod)[treat=="D"], col="yellow")
+```
+### 1.c)
+```{r}
+mod.identity<-glm(time~poison+treat, family=gaussian(link="identity"), data=data)
+mod.log<-glm(time~poison+treat, family=gaussian(link="log"), data=data)
+mod.inv<-glm(time~poison+treat, family=gaussian(link="inverse"), data=data)
+
+mean(residuals(mod.identity, type="response")^2)
+mean(residuals(mod.log, type="response")^2)
+mean(residuals(mod.inv, type="response")^2)
+
+```
+### 2.a)
+```{r}
+alba<-read.table("Alba.txt", sep="\t", dec=".", header=TRUE)
+attach(alba)
+
+gmodel<-glm(DryMatter~Dose+Herbicide+Dose:Herbicide, family=Gamma(link="inverse"),data=alba)
+
+new = data.frame(Dose=50,Herbicide="Glyphosate")
+
+pred = predict(gmodel,newdata=new, type="response")
+pred
+```
+
+### 2.b)
+```{r}
+## confidence interval
+
+eta<-predict(gmodel, newdata=new, type="link", se.fit=TRUE)
+
+link.lowerbound<-eta$fit-qnorm(0.8)*eta$se.fit
+link.upperbound<-eta$fit+qnorm(0.8)*eta$se.fit
+
+lower.mu<-(pred^2)*(link.lowerbound)
+upper.mu<-(pred^2)*(link.upperbound) 
+
+lower.mu
+upper.mu
+
+```
+
+```{r}
+## prediction interval
+
+invg.model<-glm(DryMatter~Dose+Herbicide+Dose:Herbicide, family=Gamma(link="1/mu^2"),data=alba)
+new = data.frame(Dose=50,Herbicide="Glyphosate")
+
+pred = predict(invg.model,newdata=new, type="response")
+
+#xd<-cbind(model.matrix(invg.model)[1,])
+
+xf<-c(1,50,1,50)
+```
+
+```{r}
+
+# Inverse gaussian GLM variance is phi*mu^3
+
+phi<-summary(invg.model)$dispersion
+
+Var.Yf<-phi*(pred^3)
+
+# Derivate of mu hat with respect to eta is maybe mu hat?
+Deriv<-pred
+Var.ef<-Var.Yf+(Deriv^2)*t(xf)%*%vcov(invg.model)%*%xf
+
+lower.yf<-pred-qnorm(0.95)*sqrt(Var.ef)
+upper.yf<-pred+qnorm(0.95)*sqrt(Var.ef)
+
+lower.yf
+upper.yf
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+

@@ -1,0 +1,137 @@
+---
+title: "Week3"
+output: html_document
+date: "2023-01-27"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+ozone<-read.table("ozone.txt", sep="\t", dec=".", header=TRUE)
+attach(ozone)
+
+ozone
+```
+1. a)
+```{r}
+id_model = glm(ozone ~ rad + temp + wind, family=gaussian(link="identity"), data=ozone)
+inv_model = glm(ozone ~ rad + temp + wind, family=gaussian(link="inverse"), data=ozone)
+log_model = glm(ozone ~ rad + temp + wind, family=gaussian(link="log"), data=ozone)
+exp_model = glm(ozone ~ log(rad) + log(temp) + log(wind), family=gaussian(link="log"), data=ozone)
+
+AIC(id_model)
+AIC(inv_model)
+AIC(log_model)
+AIC(exp_model)
+
+```
+1.b)
+
+```{r}
+log_gamma_model = glm(ozone ~ rad + temp + wind, family=Gamma(link="log"), data=ozone)
+log_ig_model = glm(ozone ~ rad + temp + wind, family=inverse.gaussian(link="log"), data=ozone)
+
+plot(fitted(log_model, type="response"), residuals(log_model, type="pearson")^2)
+plot(fitted(log_gamma_model, type="response"), residuals(log_gamma_model, type="pearson")^2)
+plot(fitted(log_ig_model, type="response"), residuals(log_ig_model, type="pearson")^2)
+
+
+o2<-residuals(log_model, type="pearson")^2
+mu<-fitted(log_model, type="response")
+model.pearsonN<-lm(o2~mu)
+summary(model.pearsonN)
+
+o2<-residuals(log_gamma_model, type="pearson")^2
+mu<-fitted(log_gamma_model, type="response")
+model.pearsonG<-lm(o2~mu)
+summary(model.pearsonG)
+
+o2<-residuals(log_ig_model, type="pearson")^2
+mu<-fitted(log_ig_model, type="response")
+model.pearsonIG<-lm(o2~mu)
+summary(model.pearsonIG)
+```
+1.c)
+
+```{r}
+
+```
+
+2.
+```{r}
+weld<-read.table("weld.txt", sep="\t", dec=".", header=TRUE)
+attach(weld)
+weld
+
+plot(Strength)
+```
+2. a)
+```{r}
+model1 = glm(Strength ~ factor(Drying) + factor(Material), family=gaussian(link="identity"))
+model2 = glm(Strength ~ factor(Drying) + factor(Material), family=gaussian(link="inverse"))
+model3 = glm(Strength ~ factor(Drying) + factor(Material), family=gaussian(link="log"))
+
+AIC(model1)
+AIC(model2)
+AIC(model3)
+
+model2G = glm(Strength ~ Drying + Material, family=Gamma(link="inverse"))
+model2IG = glm(Strength ~ Drying + Material, family=inverse.gaussian(link="inverse"))
+
+o2<-residuals(model2, type="pearson")^2
+mu<-fitted(model2, type="response")
+model.pearsonN<-lm(o2~mu)
+summary(model.pearsonN)$coef
+
+o2<-residuals(model2G, type="pearson")^2
+mu<-fitted(model2G, type="response")
+model.pearsonG<-lm(o2~mu)
+summary(model.pearsonG)$coef
+
+o2<-residuals(model2IG, type="pearson")^2
+mu<-fitted(model2IG, type="response")
+model.pearsonIG<-lm(o2~mu)
+summary(model.pearsonIG)$coef
+```
+
+```{r}
+plot(fitted(model2, type="response"),residuals(model2, type="pearson"))
+plot(fitted(model2G, type="response"),residuals(model2G, type="pearson"))
+plot(fitted(model2IG, type="response"),residuals(model2IG, type="pearson"))
+```
+Lets choose model2 (log link) with inverse gaussian distribution
+
+```{r}
+X<-model.matrix(model2IG)
+
+x1 = cbind(c(1,0,0))
+x2 = cbind(c(1,1,1))
+betahat = coef(model2IG)
+
+pred=(t(x2)-t(x1))%*%betahat
+
+sigma2<-sigma(model2IG)^2
+T<-pred/sqrt(sigma2*(2+(t(x2)-t(x1))%*%solve(t(X)%*%X)%*%(x2-x1)))     
+d<-2*pt(abs(T),df=13, lower.tail = FALSE)
+d
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+

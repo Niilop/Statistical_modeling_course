@@ -1,0 +1,146 @@
+---
+title: "w11"
+output: html_document
+date: "2023-01-18"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+paper<-read.table("paper.txt", sep="\t", dec=".", header=TRUE)
+attach(paper)
+
+X1=paper$hardwood
+X2=paper$pressure
+Y=paper$strength
+
+model1 = lm(strength~hardwood)
+model2 = lm(strength~hardwood+pressure)
+
+summary(model2)
+```
+a)
+```{r}
+coef(model2)[2]
+```
+Maximum likelihood of beta 1 is -0.175595238
+
+b)
+
+```{r}
+summary(model2)$sigma
+```
+c)
+
+```{r}
+row = paper[36,]
+row
+```
+
+```{r}
+pred <- predict(model2, newdata = row)
+pred
+```
+d)
+
+```{r}
+newrow = data.frame(hardwood = c(8), pressure = c(550))
+pred <- predict(model2, newdata = newrow)
+pred
+```
+e)
+
+```{r}
+pred <- predict(model2, newdata = newrow, interval="prediction", level=0.8)
+pred
+```
+f)
+```{r}
+anova(model1, model2, test="F")
+```
+F = 11.713
+
+
+2.
+```{r}
+data<-read.table("makiwaraboard.txt", sep="\t", dec=".", header=TRUE)
+attach(data)
+
+model1 = lm(Deflection ~ factor(WoodType)+factor(BoardType))
+model2 = lm(Deflection ~ factor(WoodType)*factor(BoardType))
+summary(model2)
+```
+
+```{r}
+newrow = data.frame(WoodType=c("Oak"), BoardType=c("Tapered"))
+newrow
+pred <- predict(model1, newdata = newrow)
+pred
+```
+b)
+
+```{r}
+
+betahat <- coef(model2)
+
+k1<-c(0,0,0,0,0,1,0,0)
+k2<-c(0,0,0,0,0,0,1,0)
+k3<-c(0,0,0,0,0,0,0,1)
+
+
+K<-cbind(k1,k2,k3)
+t(K)%*%betahat
+```
+
+```{r}
+q<-3
+Wald<-(t(t(K)%*%betahat)%*%solve(t(K)%*%vcov(model2)%*%K)%*%t(K)%*%betahat)/q
+Wald
+p.value<-pf(Wald, 3, 328, lower.tail = FALSE)
+p.value
+
+```
+
+```{r}
+anova(model1,model2, test="F")
+```
+
+c)
+
+```{r}
+model12 = lm(Deflection ~ factor(WoodType)+factor(BoardType)+factor(WoodType):factor(BoardType))
+betahat<-cbind(coef(model12))
+
+summary(model12)
+```
+
+```{r}
+x1 = cbind(c(1,1,0,0,0,0,0,0))
+x2 = cbind(c(1,0,0,1,1,0,0,1))
+
+
+pred<-(t(x2)-t(x1))%*%betahat
+pred
+```
+```{r}
+sigma2<-sigma(model12)^2
+
+lower<-pred-qt(0.9,df=328)*sqrt(sigma2*(2+(t(x2)-t(x1))%*%solve(vcov(model12))%*%(x2-x1)))
+upper<-pred+qt(0.9,df=328)*sqrt(sigma2*(2+(t(x2)-t(x1))%*%solve(vcov(model12))%*%(x2-x1)))
+
+
+T<-pred/sqrt(sigma2*(2+(t(x2)-t(x1))%*%solve(vcov(model12))%*%(x2-x1)))
+
+d<-2*pt(abs(T),df=328, lower.tail = FALSE)
+d
+```
+
+```{r}
+X1 = c(3,3,3,6,6,6,9,9,9)
+X2 = factor(c("a","b","c","a","b","c","a","b","c"))
+Y = c(46,55,57,55,66,68,65,76,78)
+mtest = lm(Y~X1+X2+X1:X2)
+summary(mtest)
+```

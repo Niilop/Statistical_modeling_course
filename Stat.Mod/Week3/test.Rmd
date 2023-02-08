@@ -1,0 +1,55 @@
+---
+title: "test"
+output: html_document
+date: "2023-02-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+data<-read.table("canoladiesel.txt", sep="\t", dec=".", header=TRUE)
+attach(data)
+
+model.log<-glm(Yield~Time, family=Gamma(link="log"), data=data)
+model.logN<-glm(Yield~Time, family=gaussian(link="log"), data=data)
+model.logIG<-glm(Yield~Time, family=inverse.gaussian(link="log"), data=data)
+```
+
+```{r}
+o2<-residuals(model.logN, type="pearson")^2
+mu<-fitted(model.logN, type="response")
+model.pearsonN<-lm(o2~mu)
+summary(model.pearsonN)
+
+o2<-residuals(model.log, type="pearson")^2
+mu<-fitted(model.log, type="response")
+model.pearsonG<-lm(o2~mu)
+summary(model.pearsonG)
+
+o2<-residuals(model.logIG, type="pearson")^2
+mu<-fitted(model.logIG, type="response")
+model.pearsonIG<-lm(o2~mu)
+summary(model.pearsonIG)
+```
+
+```{r}
+plot(fitted(model.logN, type="response"),residuals(model.logN, type="pearson"))
+plot(fitted(model.log, type="response"),residuals(model.log, type="pearson"))
+plot(fitted(model.logIG, type="response"),residuals(model.logIG, type="pearson"))
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+
