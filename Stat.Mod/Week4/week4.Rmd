@@ -1,0 +1,204 @@
+---
+title: "week4"
+output: html_document
+date: "2023-02-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1.
+
+```{r}
+chromo<-read.table("chromoabnormal.txt", sep="\t", dec=".", header=TRUE)
+attach(chromo)
+
+chromo
+```
+
+```{r}
+model.main = glm(ca~offset(log(cells))+doseamt+doserate+doseamt:doserate, family=poisson(link="log"),data=chromo)
+summary(model.main)
+```
+1. a)
+```{r}
+newdata = data.frame(doseamt=4, doserate=0.75, cells = 64070)
+newdata
+pred = predict(model.main, newdata=newdata, type="response")
+pred
+```
+2. b)
+
+```{r}
+newdata = data.frame(doseamt=rep(4,3), doserate=rep(0.75,3), cells = c(64070, 190700, 2000000))
+newdata
+pred = predict(model.main, newdata=newdata, type="response")
+pred
+
+ratio.estimate = pred/newdata$cells
+ratio.estimate
+```
+```{r}
+newdata = data.frame(doseamt=4, doserate=0.75, cells = 100000)
+pred = predict(model.main, newdata=newdata, type="response")
+
+ratio.pred = pred/newdata$cells
+
+xf=t(cbind(1,4,0.75,3))
+
+Var.eYf = pred*(1+pred*t(xf)%*%vcov(model.main)%*%xf)
+
+lower.Yf = pred-qnorm(0.95)*sqrt(Var.eYf)
+upper.Yf = pred+qnorm(0.95)*sqrt(Var.eYf)
+lower.Yf
+upper.Yf
+
+Var.eZf = ((1/newdata$cells)^2)*Var.eYf
+
+lower.Zf = ratio.pred-qnorm(0.95)*sqrt(Var.eZf)
+upper.Zf = ratio.pred+qnorm(0.95)*sqrt(Var.eZf)
+lower.Zf
+upper.Zf
+```
+1. c)
+
+```{r}
+modelQuasi.main = glm(ca~offset(log(cells))+doseamt+doserate+doseamt:doserate, family=quasipoisson(link="log"),data=chromo)
+summary(modelQuasi.main)
+
+modelQuasi.H0 = glm(ca~offset(log(cells))+doseamt, family=quasipoisson(link="log"),data=chromo)
+summary(modelQuasi.H0)
+
+anova(modelQuasi.H0, modelQuasi.main, test="F")
+anova(modelQuasi.H0, modelQuasi.main, test="F")$F[2]
+```
+
+from summaries we can see that there is a lot of overdispersion where dispersion paremter for main model was 12.9 and for H0 model 17.2. This indicates that the variance is larger than would be expected from a poisson distribution.
+
+1. d)
+```{r}
+library(MASS)
+summary(modelQuasi.main)
+modelNB = glm.nb(ca~offset(log(cells))+doseamt+doserate+doseamt:doserate,data=chromo)
+summary(modelNB)
+
+```
+As there is overdispersion, we can leave the poisson model out. In fact the overdispersion is so high that the quasi-poisson model might not be enough as it would expect that the dispersion parameter is proportial to its mean. This would leave us with the negative binomial model as it is generally better with overdispersion situations.
+
+2.
+```{r}
+apple<-read.table("applejuiceCRA7152.txt", sep="\t", dec=".", header=TRUE)
+attach(apple)
+
+apple
+```
+2. a)
+
+As the case is logistic regression, we choose binomial distribution. This means that we can exclude identity, log and inverse link models
+```{r}
+# default model here is binomial logit link model
+model.logit = glm(Growth~pH+Nisin+Temperature+Brix, family=binomial(link=logit), data=apple)
+summary(model.logit)
+```
+```{r}
+model.probit = glm(Growth~pH+Nisin+Temperature+Brix, family=binomial(link=probit), data=apple)
+model.cauchit = glm(Growth~pH+Nisin+Temperature+Brix, family=binomial(link=cauchit), data=apple)
+model.gumbel = glm(Growth~pH+Nisin+Temperature+Brix, family=binomial(link=cloglog), data=apple)
+
+
+AIC(model.logit) # 3rd best AIC
+AIC(model.probit) # 2nd best AIC
+AIC(model.cauchit) # Best AIC score
+AIC(model.gumbel) # Worst AIC
+
+summary(model.logit)
+summary(model.probit)
+summary(model.cauchit)
+summary(model.gumbel)
+```
+Cauchit model AIC is the lowest, but it looks like all the p values are 0.1 somehow which indicates that they would not be significant. 
+
+We can remove the features with lowest p value 
+
+```{r}
+model.cauchit = glm(Growth~pH+Nisin+Temperature, family=binomial(link=cauchit), data=apple)
+summary(model.cauchit)$coefficients
+
+model.cauchit = glm(Growth~Nisin+Temperature, family=binomial(link=cauchit), data=apple)
+summary(model.cauchit)$coefficients
+```
+The p-values are still pretty high after extracting the features with lowest p value.
+
+The other models look ok, so lets choose the model with the 2nd best AIC score, Probit
+2. b)
+```{r}
+newdata = data.frame(pH=4.5, Nisin=20, Temperature=30, Brix=17)
+predict(model.probit, newdata=newdata, type="response")
+```
+2. c)
+
+```{r}
+eta = predict(model.probit, newdata=newdata, type="link", se.fit=TRUE)
+#xf = rbind(1, 4.5,20,30,17)
+#eta = t(xf)%*%coef(model.identity)
+#cov.eta = t(xf)%*%vcov(model.identity)%*%xf
+
+link.lowerb = eta$fit-qnorm(0.975)*eta$se.fit
+link.upperb = eta$fit+qnorm(0.975)*eta$se.fit
+
+pnorm(link.lowerb)
+pnorm(link.upperb)
+```
+d)
+```{r}
+newdata = data.frame(pH=4.5, Nisin=20, Temperature=30, Brix=17)
+
+mu.f = predict(model.probit, newdata=newdata, type="response")
+YS.pred = 100*mu.f
+
+
+mu.hat = predict(model.probit, newdata=apple, type="response")
+index = dim(apple)[1]
+
+e.b = numeric()
+
+for (b in 1:100){
+  
+y = numeric()
+
+for(i in 1:index){
+  y[i] = sample(0:1, replace=TRUE,prob=c(1-mu.hat[i],mu.hat[i]))
+  
+}
+model.probitB = glm(y~pH+Nisin+Temperature+Brix, family=binomial(link=probit), data=apple)
+newdata = data.frame(pH=4.5, Nisin=20, Temperature=30, Brix=17)
+
+mu.fB<-predict(model.probitB, newdata=newdata, type="response")
+YS.predB<-100*mu.fB
+
+
+yf.b<-sample(0:1,100,prob=c(1-mu.f,mu.f), replace=TRUE)
+
+e.b[b]<-sum(yf.b)-YS.predB
+}
+```
+
+
+```{r}
+10*exp(3.5)
+```
+
+```{r}
+var.error<-var(e.b)
+
+z<-qnorm(c(0.9))
+lower.bound<-YS.pred-z*sqrt(var.error)
+upper.bound<-YS.pred+z*sqrt(var.error)
+lower.bound
+upper.bound
+```
+
+```{r}
+
+```

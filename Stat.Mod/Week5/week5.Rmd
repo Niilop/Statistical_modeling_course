@@ -1,0 +1,131 @@
+---
+title: "week5"
+output: html_document
+date: "2023-02-20"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+retino<-read.table("retinopathy.txt", sep="\t", dec=".", header=TRUE)
+attach(retino)
+library(nnet)
+
+retino
+```
+1. a)
+
+```{r}
+multinom.model = multinom(RET~DIAB)
+newdata = data.frame(DIAB = 20)
+pred = predict(multinom.model, newdata=newdata, type="probs")
+round(pred, 3)
+```
+0.246
+
+2. b)
+
+```{r}
+library(ordinal)
+factoret = factor(retino$RET)
+levels(factoret)
+#factoret = ordered(factoret)
+
+model1 = clm(factoret~DIAB, data=retino)
+summary(model1)
+```
+
+```{r}
+newdata
+pred = predict(model1, newdata=newdata, type="prob")
+pred
+```
+0.2456693
+
+1. c)
+
+```{r}
+model1234 = clm(factoret~DIAB+GH+BP+SM, data=retino)
+summary(model1234)
+
+Y = cbind(as.numeric(RET==0), as.numeric(RET==1), as.numeric(RET==2))
+head(Y)
+```
+
+```{r}
+fittedC1 = predict(model1234, newdata=retino, type="prob")$fit
+
+eC1=Y-fittedC1
+MSE.C1=mean(diag(eC1%*%t(eC1)))
+
+
+fittedC2 = predict(model1, newdata=retino, type="prob")$fit
+eC2=Y-fittedC2
+MSE.C2=mean(diag(eC2%*%t(eC2)))
+
+MSE.C1
+MSE.C2
+
+```
+model1234 fits better
+2.a)
+```{r}
+nitro = read.table("NitrogenYield.txt", sep="\t", dec=".", header=TRUE)
+attach(nitro)
+
+model.poly<-lm(Yield~Nitrogen+I(Nitrogen^2))
+summary(model.poly)
+```
+-0.0022237
+
+2.b)
+```{r}
+model.exp = glm(Yield~log(Nitrogen), family=gaussian(link="log"), data=nitro)
+summary(model.exp)
+
+newdata = data.frame(Nitrogen=150)
+predict(model.exp, newdata=newdata,type="response")
+```
+90.66521 
+2.c)
+```{r}
+library(nlme)
+
+model.asym = nls(Yield~SSasymp(Nitrogen, Asym,R0,lrc), data=nitro)
+summary(model.asym)
+```
+102.0634
+
+2.d)
+```{r}
+model.mm = nls(Yield~SSmicmen(Nitrogen, Vm, K), data=nitro)
+summary(model.mm)
+predict(model.mm, newdata=newdata,type="response")
+```
+90.57802
+
+2.e)
+```{r}
+beta = coef(model.asym)
+cov.beta = vcov(model.asym)
+
+
+library(mvtnorm)
+beta.star = rmvnorm(1000, mean = beta, sigma = cov.beta)
+
+Asym = beta.star[,1]
+R0 = beta.star[,2]
+lrc = beta.star[,3]
+
+mu.star = (-Asym+(R0-Asym)*exp(-exp(lrc)*newdata$Nitrogen))*(-1)
+
+sigma2 = sigma(model.asym)[1]^2
+yf.star = rnorm(1000, mean=mu.star, sd=sqrt(sigma2))
+
+pred.lowerbound = quantile(yf.star, c(0.1))
+pred.upperbound = quantile(yf.star, c(0.9))
+pred.lowerbound
+pred.upperbound
+```

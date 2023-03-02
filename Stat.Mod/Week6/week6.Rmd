@@ -1,0 +1,106 @@
+---
+title: "week6"
+output: html_document
+date: "2023-03-01"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+1.
+```{r}
+data<-read.table("tirereliability.txt", sep="\t", dec=".", header=TRUE)
+attach(data)
+library(survival)
+
+data
+```
+1. a)
+```{r}
+model = coxph(Surv(survival, complete)~wedge, data=data)
+summary(model)
+```
+-5.664960
+
+1. b)
+```{r}
+newdata = data.frame(wedge = 0.6)
+sf = survfit(model, newdata=newdata, conf.type="plain")
+summary(sf, times = 1.0)
+plot(sf)
+```
+1. c)
+```{r}
+newdata = data.frame(wedge = c(0.6, 1.6))
+risk = predict(model, newdata=newdata, type="risk")
+risk[1]/risk[2]
+```
+1. d)
+```{r}
+model2 = coxph(Surv(survival, complete)~wedge+peelForce+interBelt+wedge:peelForce)
+model2.H0 = coxph(Surv(survival, complete)~peelForce+interBelt)
+
+anova(model2.H0, model2)
+```
+1. e)
+```{r}
+newdata = data.frame(wedge = 0.6, peelForce = 0.9, interBelt = 0.7)
+sf = survfit(model2, newdata=newdata, conf.type="plain")
+sf
+summary(sf, times = 1)$lower
+summary(sf, times = 1)$upper
+```
+2. a)
+```{r}
+library(eha)
+
+model3 = phreg(Surv(survival, complete)~wedge, data=data, dist="weibull")
+summary(model3)
+
+x = 1.6
+p = exp(coef(model3)[3])
+lambda = exp(coef(model3)[2])
+beta = exp(coef(model3)[1])
+
+lambda.star = lambda/exp((x*beta)/p)
+
+x = 0.6
+lambda.star2 = lambda/exp((x*beta)/p)
+
+hazard = lambda.star2/lambda.star
+hazard
+```
+2. b)
+```{r}
+mu = lambda.star*gamma(1+(1/p))
+mu
+```
+2. c)
+
+
+```{r}
+t.star = rweibull(10000, shape=p, scale=lambda.star)
+lowerbound = quantile(t.star, c(0.1))
+upperbound = quantile(t.star, c(0.9))
+
+lowerbound
+upperbound
+```
+2. d)
+
+```{r}
+model4 = phreg(Surv(survival, complete)~wedge+peelForce+interBelt+wedge:peelForce, data=data, dist="weibull")
+
+x = c(0.6,0.8,0.7,0.42)
+
+p = exp(coef(model4)[6])
+lambda = exp(coef(model4)[5])
+beta = coef(model4)[1:4]
+
+lambda.star3 = lambda/exp((t(x)%*%beta)/p)
+
+survival1 = 1-pweibull(1,shape=p, scale=lambda.star3)
+survival1
+
+```
